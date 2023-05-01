@@ -9,10 +9,7 @@ import org.springframework.web.client.RestTemplate;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 @Service
 public class WeatherService {
@@ -22,7 +19,7 @@ public class WeatherService {
     private final RestTemplate restTemplate = new RestTemplate();
 
     public WeatherData getWeatherData(String city) {
-        String url = "https://api.openweathermap.org/data/2.5/forecast?q={city}&appid={apiKey}&cnt=2&units=metric";
+        String url = "https://api.openweathermap.org/data/2.5/forecast?q={city}&appid={apiKey}&cnt=4&units=metric";
 
         Map<String, String> uriVariables = new HashMap<>();
         uriVariables.put("city", city);
@@ -32,30 +29,34 @@ public class WeatherService {
 
         WeatherResponse response = responseEntity.getBody();
 
+        DateTimeFormatter formatter =  DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH);
+
+
+        List<WeatherData.WeatherInTimestamp> weatherTimestamps = new ArrayList<>();
+
         String cityName = response.getCity().getName();
         String country = response.getCity().getCountry();
         Integer population = response.getCity().getPopulation();
-        Double temperature = response.getList().get(0).getMain().getTemp();
-        Integer humidity = response.getList().get(0).getMain().getHumidity();
-        String description = response.getList().get(0).getWeather().get(0).getDescription();
-        Double speedOfWind = response.getList().get(0).getWind().getSpeed();
-        Integer clouds = response.getList().get(0).getClouds().getAll();
-        String dateInString = response.getList().get(0).getDt_txt();
+        List<WeatherResponse.WeatherByTimestamp> responseList = response.getList();
 
-        DateTimeFormatter formatter =  DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH);
-        LocalDateTime date  = LocalDateTime.parse(dateInString, formatter);
+        for (WeatherResponse.WeatherByTimestamp weatherByTimestamp : responseList) {
+            WeatherData.WeatherInTimestamp weatherInTimestamp = new WeatherData.WeatherInTimestamp();
+            weatherInTimestamp.setWeatherName(weatherByTimestamp.getWeather().get(0).getMain());
+            weatherInTimestamp.setWeatherDescription(weatherByTimestamp.getWeather().get(0).getDescription());
+            String dateInString = weatherByTimestamp.getDt_txt();
+            LocalDateTime date = LocalDateTime.parse(dateInString, formatter);
+            weatherInTimestamp.setThreeHoursTimestamp(date);
+            weatherInTimestamp.setTemperature(weatherByTimestamp.getMain().getTemp());
+            weatherInTimestamp.setFeelsLikeTemperature(weatherByTimestamp.getMain().getFeels_like());
+            weatherInTimestamp.setPressure(weatherByTimestamp.getMain().getPressure());
+            weatherInTimestamp.setHumidity(weatherByTimestamp.getMain().getHumidity());
+            weatherInTimestamp.setVisibility(weatherByTimestamp.getVisibility());
+            weatherInTimestamp.setCloudsInPercent(weatherByTimestamp.getClouds().getAll());
+            weatherInTimestamp.setWindSpeed(weatherByTimestamp.getWind().getSpeed());
+            weatherTimestamps.add(weatherInTimestamp);
+        }
 
-        System.out.println(cityName);
-        System.out.println(country);
-        System.out.println(population);
-        System.out.println(temperature);
-        System.out.println(humidity);
-        System.out.println(description);
-        System.out.println(speedOfWind);
-        System.out.println(clouds);
-        System.out.println(date);
-
-        return new WeatherData();
+        return new WeatherData(cityName, country, population, weatherTimestamps);
     }
 
 
