@@ -5,15 +5,15 @@ import java.util.List;
 
 public class WeatherResponse {
 
-    private List<WeatherByTimestamp> list;
+    private List<TimestampWeather> list;
     private City city;
 
 
-    public List<WeatherByTimestamp> getList() {
+    public List<TimestampWeather> getList() {
         return list;
     }
 
-    public void setList(List<WeatherByTimestamp> list) {
+    public void setList(List<TimestampWeather> list) {
         this.list = list;
     }
 
@@ -25,7 +25,7 @@ public class WeatherResponse {
         this.city = city;
     }
 
-    public static class WeatherByTimestamp{
+    public static class TimestampWeather {
 
         private Main main;
         private List<WeatherInfo> weather;

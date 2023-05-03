@@ -25,51 +25,46 @@ public class WeatherService {
 
     public ResponseEntity<?> getWeeklyWeather(String city) {
         String url = "https://api.openweathermap.org/data/2.5/forecast?q={city}&appid={apiKey}&cnt=40&units=metric";
-        Map<String, String> urlVariables = new HashMap<>();
-        urlVariables.put("city", city);
-        urlVariables.put("apiKey", apiKey);
-        ResponseEntity<WeatherResponse> responseEntity;
-
-        try {
-            responseEntity = restTemplate.getForEntity(url, WeatherResponse.class, urlVariables);
-        } catch (HttpClientErrorException e){
-            return ResponseEntity.badRequest().body("No such city");
-        }
-
-        WeatherResponse response = responseEntity.getBody();
-        return ResponseEntity.ok(getApiData(response));
+        return getWeather(city, url);
     }
 
     public ResponseEntity<?> getTodayWeather(String city){
         String url = "https://api.openweathermap.org/data/2.5/forecast?q={city}&appid={apiKey}&cnt=40&units=metric";
-        Map<String, String> urlVariables = new HashMap<>();
-        urlVariables.put("city", city);
-        urlVariables.put("apiKey", apiKey);
-        ResponseEntity<WeatherResponse> responseEntity;
-
-        try {
-            responseEntity = restTemplate.getForEntity(url, WeatherResponse.class, urlVariables);
-        } catch (HttpClientErrorException e){
-            return ResponseEntity.badRequest().body("No such city");
-        }
-        WeatherResponse response = responseEntity.getBody();
-        return ResponseEntity.ok(getApiData(response, today));
+        return getWeather(city, url, today);
     }
 
     public ResponseEntity<?> getTomorrowWeather(String city){
         String url = "https://api.openweathermap.org/data/2.5/forecast?q={city}&appid={apiKey}&cnt=40&units=metric";
+        return getWeather(city, url, tomorrow);
+    }
+
+    public ResponseEntity<?> getWeather(String city, String url, LocalDate date){
         Map<String, String> urlVariables = new HashMap<>();
         urlVariables.put("city", city);
         urlVariables.put("apiKey", apiKey);
-        ResponseEntity<WeatherResponse> responseEntity;
+        return getWeatherData(url, urlVariables, date);
+    }
 
+    public ResponseEntity<?> getWeather(String city, String url){
+        Map<String, String> urlVariables = new HashMap<>();
+        urlVariables.put("city", city);
+        urlVariables.put("apiKey", apiKey);
+        return getWeatherData(url, urlVariables, null);
+    }
+
+    public ResponseEntity<?> getWeatherData(String url, Map<String, String> urlVariables, LocalDate date){
+        ResponseEntity<WeatherResponse> responseEntity;
         try {
             responseEntity = restTemplate.getForEntity(url, WeatherResponse.class, urlVariables);
-        } catch (HttpClientErrorException e){
+        } catch (HttpClientErrorException e) {
             return ResponseEntity.badRequest().body("No such city");
         }
         WeatherResponse response = responseEntity.getBody();
-        return ResponseEntity.ok(getApiData(response, tomorrow));
+        if (date != null){
+            return ResponseEntity.ok(getApiData(response, date));
+        } else {
+            return ResponseEntity.ok(getApiData(response));
+        }
     }
 
     public WeatherData getApiData(WeatherResponse response, LocalDate date){
@@ -89,25 +84,12 @@ public class WeatherService {
     }
 
     public List<WeatherData.WeatherInTimestamp> getTimestampsData(WeatherResponse response, LocalDate date){
-        List<WeatherResponse.WeatherByTimestamp> responseList = response.getList();
+        List<WeatherResponse.TimestampWeather> responseList = response.getList();
         List<WeatherData.WeatherInTimestamp> weatherTimestamps = new ArrayList<>();
 
-        for (WeatherResponse.WeatherByTimestamp weatherByTimestamp : responseList) {
-            WeatherData.WeatherInTimestamp weatherInTimestamp = new WeatherData.WeatherInTimestamp();
-            weatherInTimestamp.setWeatherName(weatherByTimestamp.getWeather().get(0).getMain());
-            weatherInTimestamp.setWeatherDescription(weatherByTimestamp.getWeather().get(0).getDescription());
-            String dateInString = weatherByTimestamp.getDt_txt();
-            LocalDateTime formattedDate = LocalDateTime.parse(dateInString, formatter);
-            weatherInTimestamp.setThreeHoursTimestamp(formattedDate);
-            weatherInTimestamp.setTemperature(weatherByTimestamp.getMain().getTemp());
-            weatherInTimestamp.setFeelsLikeTemperature(weatherByTimestamp.getMain().getFeels_like());
-            weatherInTimestamp.setPressure(weatherByTimestamp.getMain().getPressure());
-            weatherInTimestamp.setHumidity(weatherByTimestamp.getMain().getHumidity());
-            weatherInTimestamp.setVisibility(weatherByTimestamp.getVisibility());
-            weatherInTimestamp.setCloudsInPercent(weatherByTimestamp.getClouds().getAll());
-            weatherInTimestamp.setWindSpeed(weatherByTimestamp.getWind().getSpeed());
-
-            if (date.isEqual(formattedDate.toLocalDate())){
+        for (WeatherResponse.TimestampWeather weatherTimestamp : responseList){
+            WeatherData.WeatherInTimestamp weatherInTimestamp = convertWeatherResponseToWeatherInTimestamp(weatherTimestamp);
+            if (date.isEqual(weatherInTimestamp.getThreeHoursTimestamp().toLocalDate())){
                 weatherTimestamps.add(weatherInTimestamp);
             }
         }
@@ -115,28 +97,29 @@ public class WeatherService {
     }
 
     public List<WeatherData.WeatherInTimestamp> getTimestampsData(WeatherResponse response){
-        List<WeatherResponse.WeatherByTimestamp> responseList = response.getList();
+        List<WeatherResponse.TimestampWeather> responseList = response.getList();
         List<WeatherData.WeatherInTimestamp> weatherTimestamps = new ArrayList<>();
-
-        for (WeatherResponse.WeatherByTimestamp weatherByTimestamp : responseList) {
-            WeatherData.WeatherInTimestamp weatherInTimestamp = new WeatherData.WeatherInTimestamp();
-            weatherInTimestamp.setWeatherName(weatherByTimestamp.getWeather().get(0).getMain());
-            weatherInTimestamp.setWeatherDescription(weatherByTimestamp.getWeather().get(0).getDescription());
-            String dateInString = weatherByTimestamp.getDt_txt();
-            LocalDateTime formattedDate = LocalDateTime.parse(dateInString, formatter);
-            weatherInTimestamp.setThreeHoursTimestamp(formattedDate);
-            weatherInTimestamp.setTemperature(weatherByTimestamp.getMain().getTemp());
-            weatherInTimestamp.setFeelsLikeTemperature(weatherByTimestamp.getMain().getFeels_like());
-            weatherInTimestamp.setPressure(weatherByTimestamp.getMain().getPressure());
-            weatherInTimestamp.setHumidity(weatherByTimestamp.getMain().getHumidity());
-            weatherInTimestamp.setVisibility(weatherByTimestamp.getVisibility());
-            weatherInTimestamp.setCloudsInPercent(weatherByTimestamp.getClouds().getAll());
-            weatherInTimestamp.setWindSpeed(weatherByTimestamp.getWind().getSpeed());
+        for (WeatherResponse.TimestampWeather weatherTimestamp : responseList){
+            WeatherData.WeatherInTimestamp weatherInTimestamp = convertWeatherResponseToWeatherInTimestamp(weatherTimestamp);
             weatherTimestamps.add(weatherInTimestamp);
         }
         return weatherTimestamps;
     }
 
-
-
+    private WeatherData.WeatherInTimestamp convertWeatherResponseToWeatherInTimestamp(WeatherResponse.TimestampWeather timestampWeather) {
+        WeatherData.WeatherInTimestamp weatherInTimestamp = new WeatherData.WeatherInTimestamp();
+        weatherInTimestamp.setWeatherName(timestampWeather.getWeather().get(0).getMain());
+        weatherInTimestamp.setWeatherDescription(timestampWeather.getWeather().get(0).getDescription());
+        String dateInString = timestampWeather.getDt_txt();
+        LocalDateTime formattedDate = LocalDateTime.parse(dateInString, formatter);
+        weatherInTimestamp.setThreeHoursTimestamp(formattedDate);
+        weatherInTimestamp.setTemperature(timestampWeather.getMain().getTemp());
+        weatherInTimestamp.setFeelsLikeTemperature(timestampWeather.getMain().getFeels_like());
+        weatherInTimestamp.setPressure(timestampWeather.getMain().getPressure());
+        weatherInTimestamp.setHumidity(timestampWeather.getMain().getHumidity());
+        weatherInTimestamp.setVisibility(timestampWeather.getVisibility());
+        weatherInTimestamp.setCloudsInPercent(timestampWeather.getClouds().getAll());
+        weatherInTimestamp.setWindSpeed(timestampWeather.getWind().getSpeed());
+        return weatherInTimestamp;
+    }
 }

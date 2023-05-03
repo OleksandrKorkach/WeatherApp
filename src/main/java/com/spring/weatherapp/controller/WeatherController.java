@@ -14,7 +14,6 @@ public class WeatherController {
 
     @GetMapping("/{city}")
     public ResponseEntity<?> get5DaysWeather(@PathVariable String city) {
-
         return weatherService.getWeeklyWeather(city);
     }
 
