@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -122,4 +123,5 @@ public class WeatherService {
         weatherInTimestamp.setWindSpeed(timestampWeather.getWind().getSpeed());
         return weatherInTimestamp;
     }
+
 }
